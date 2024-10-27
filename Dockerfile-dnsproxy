@@ -1,0 +1,25 @@
+FROM alpine:latest
+
+RUN apk update && \
+    apk add ca-certificates curl gcc musl-dev python py2-pip python2-dev
+
+COPY asnfilter /asnfilter/asnfilter
+COPY requirements.txt /asnfilter/requirements.txt
+COPY config.yml /asnfilter/config.yml
+COPY dnsproxy /asnfilter/dnsproxy
+
+WORKDIR /asnfilter
+RUN pip install -r requirements.txt
+RUN curl \
+    http://geolite.maxmind.com/download/geoip/database/GeoLite2-ASN.tar.gz > \
+    GeoLite2-ASN.tar.gz && \
+    tar zxvf GeoLite2-ASN.tar.gz && \
+    mv GeoLite2-ASN_*/GeoLite2-ASN.mmdb GeoLite2-ASN.mmdb && \
+    rm -rf GeoLite2-ASN_* GeoLite2-ASN.tar.gz
+
+RUN apk del curl gcc musl-dev py2-pip python2-dev
+
+EXPOSE 53
+ENTRYPOINT ["/asnfilter/dnsproxy"]
+CMD ["--config=/asnfilter/config.yml", \
+     "--geolite2=/asnfilter/GeoLite2-ASN.mmdb"] # , "--debug"]

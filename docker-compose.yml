@@ -1,0 +1,20 @@
+version: '3.0'
+
+services:
+  dnsproxy:
+    image: asnfilter-dnsproxy
+    build:
+      context: .
+      dockerfile: Dockerfile-dnsproxy
+    depends_on:
+      - redis
+    ports:
+      - 53:53
+      - 53:53/udp
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    volumes:
+      - ./redis-data:/data

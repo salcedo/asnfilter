@@ -1,0 +1,83 @@
+#!/usr/bin/env python
+
+from __future__ import absolute_import
+
+import getopt
+import logging
+import os
+import sys
+
+from asnfilter.dnsproxy import DNSProxy
+from asnfilter.updater import Updater
+
+
+def usage():
+    print("""ASNfilter DNS Proxy Daemon - https://github.com/salcedo/asnfilter
+
+Usage:
+
+    dnsproxy.py [options]
+
+Options:
+
+    -c, --config=        configuration file (yaml)
+    -d, --debug          show debug / increase verbosity
+    -g, --geolite2=      geolite2 database
+    -h, --help           show help
+    -p, --port=          dns listen port
+    -r, --resolv         use /etc/resolv.conf upstream
+
+""")
+
+    sys.exit(0)
+
+
+def main():
+    try:
+        opts, args = getopt.getopt(
+                sys.argv[1:], 'c:dg:hp:r',
+                ['config=', 'debug', 'geolite2=', 'help',
+                 'port=', 'resolv'])
+    except getopt.GetoptError as error:
+        print(str(error))
+        usage()
+
+    config_file = os.path.abspath('config.yml')
+    geolite2_db = None
+    debug = logging.INFO
+    port = None
+    resolv = None
+
+    for opt, arg in opts:
+        if opt in ('-c', '--config'):
+            config_file = os.path.abspath(arg)
+        elif opt in ('-d', '--debug'):
+            debug = logging.DEBUG
+        elif opt in ('-g', '--geolite2'):
+            geolite2_db = os.path.abspath(arg)
+        elif opt in ('-h', '--help'):
+            usage()
+        elif opt in ('-p', '--port'):
+            try:
+                port = int(arg)
+            except:
+                usage()
+        elif opt in ('-r', '--resolv'):
+            resolv = '/etc/resolv.conf'
+        else:
+            usage()
+
+    logging.basicConfig(
+        stream=sys.stdout, level=debug,
+        format='%(asctime)s %(name)s: %(message)s'
+    )
+
+    proxy = DNSProxy(config_file, geolite2_db, port, resolv)
+    updater = Updater(config_file, proxy)
+
+    proxy.run()
+    updater.pubsub_thread.stop()
+
+
+if __name__ == '__main__':
+    main()
